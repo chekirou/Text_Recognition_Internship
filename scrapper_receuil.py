@@ -39,12 +39,13 @@ def queryFromYear(year):
         cpt = cpt + 1
         print(cpt,"--> https://gallica.bnf.fr/"+i+".texteBrut")
         req = requests.get("https://gallica.bnf.fr/"+i+".texteBrut")
-        clean_text = BeautifulSoup(req.content, "lxml").get_text()
-        f = open("downloads/T"+str(year)+str(cpt)+".txt","w")
-        f.write(clean_text)
+        clean_text = BeautifulSoup(req.content, "lxml")
+        f = open("downloads/T"+str(year)+str(cpt)+".html","wb")
+        f.write(req.content)
 
 
 
 
 for i in range(1807,1826):
     queryFromYear(i)
+    break
