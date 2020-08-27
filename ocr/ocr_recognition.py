@@ -47,5 +47,3 @@ def tika_readpdf(path_to_pdf):
     raw = parser.from_file(path_to_pdf)
     return (raw['content'])
 
-#preporcess_pdf("output.pdf")
-print(pytesseract_ocr("output-2.jpg"))
