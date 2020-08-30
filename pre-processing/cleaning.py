@@ -6,7 +6,6 @@ import requests
 import re
 import json
 import pandas as pd
-
 class Cleaner:
     def __init__(self, directory):
         self.directory = directory
@@ -14,29 +13,44 @@ class Cleaner:
     def extract(self, file):
         soup = BeautifulSoup(file , "html.parser")
         df = pd.DataFrame(columns=["page", "arrêt", "date", "juridiction"])
-        Decision, notes, page, new_page = False, False, 0, True
-        for tag in soup.body : 
+        Decision, notes, page, new_page, new_decision, count = False, False, 0, True, False,1
+        for tag in soup.body :
+            if count == 15:
+                count = 0
+                Decision = False
+            new_decision = False
+            string = tag.get_text()
             if tag.name == "hr":
                 page += 1
                 notes = False
                 new_page  = True
-            if page > 3 and tag.name == "p" and tag.string is not None and not new_page:
-                m1 = re.match(r".*?LA COUR(.+)", tag.string)
-                m2 = re.match(r"^Du(.+?\d{3}.+?)—(.+?)—.+$", tag.string ) 
+            if tag.name == "p" and string is not None and not new_page:
+                m1 = re.match(r"(^.*?(La Cour,|L(A|À|a) COUR)(?! DE)(.+)$|^JUGEMENT\.?\s?$|^A\s?R\s?R\s?(Ê|E)\s?T\.\s?$)", string)
+                m2 = re.match(r"(.*?)D(u|û|ù)(.+?)(—|–|-|–|–)(.+)", string ) 
+                
                 if not Decision and m1:
                     Decision = True
-                    text = m1.groups()[0]
+                    text = ""
+                    count = 1
+                    if m1.groups()[3] != None:
+                        text = str(m1.groups()[3])
                     First_page = page
-                elif Decision and m2 :
+                    new_decision = True
+                if Decision and m2:
+                    if count < 15:
+                        if(new_decision):
+                            text =m2.groups()[0]
+                        else:
+                            text += m2.groups()[0]
+                        date = m2.groups()[2]
+                        juridiction = m2.groups()[4]
+                        df = df.append({'page' : First_page, 'arrêt' : text , "date": date, "juridiction" : juridiction},ignore_index=True)
                     Decision = False
-                    date = m2.groups()[0]
-                    juridiction = m2.groups()[1]
-                    df = df.append({'page' : First_page, 'arrêt' : text , "date": date, "juridiction" : juridiction},ignore_index=True)
                     text = ''
-                elif not notes:
-                    if not re.match(r"^\(\d*\).+$", tag.string):
-                    	if Decision:
-                        	text+= tag.string + "\n"
+                elif not notes and Decision and not new_decision:
+                    if not re.match(r"^\(\d*\).+$", string):
+                        count +=1
+                        text+= string + "\n"
                     else:
                         notes = True
                 else:
@@ -47,6 +61,43 @@ class Cleaner:
     def save(self, df, ark):
         df.to_csv(f"{self.directory}/{ark}.csv", encoding="utf-8")
         pass
+    def postProcess(self, df):
+        # fix mix date-juridiction
+        Rows_contains_ = df['date'].str.contains(r"(—|–|-)")
+        for i, row in df[Rows_contains_].iterrows():
+            m = re.search(r"(.+?)(—|–|-|—)(.+)(—|–|-|—)?.*", row["date"] )
+            if m:
+                df.at[i, "date"] = m.groups()[0]
+                df.at[i, "juridiction"] = m.groups()[2]
+        #if still not fixed --> drop them
+        Rows_contains_ = df['date'].str.contains(r"(—|–|-)")
+        df = df[Rows_contains_ == False]
+        # drop date too long
+        leng = df["date"].str.len()
+        df = df[leng < 25] # drop too long date
+        # drop date with no number
+        number = df["date"].str.contains("^\D*$")
+        df = df[number== False] # drop too long date
+        length_decision = df.arrêt.str.len()
+        # drop decision too short
+        df = df[length_decision > 100]
+        # drop juridiction too long
+        for i , row in df.iterrows():
+            m = re.search(r"(.+?)(—|–|-|—|,|;).*", row["juridiction"] )
+            if m:
+                df.at[i, "juridiction"] = m.groups()[0]
+        
+        # process the juridiction
+        
+        return df              
+        
+                
+              
+        
+                
+                 
+                
+        
         
 
 

@@ -4,6 +4,7 @@ import pandas as pd
 if __name__ == "__main__":
 	cleaner = Cleaner("../cache")
 	print("Enter 1800<year<1900")
+	
 	year = int(input())
 	if year >= 1800 and year <= 1900:
 		print("=======> " + str(year))
@@ -14,6 +15,8 @@ if __name__ == "__main__":
 			file = Scrapper.get_document(ark)
 			print(" extraction ")
 			df = cleaner.extract(file)
+			print("post processing")
+			df = cleaner.postProcess(df)
 			print(" saving ")
 			cleaner.save(df, ark)
 			print(" finnished " + ark)
