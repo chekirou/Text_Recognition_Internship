@@ -13,5 +13,5 @@
 - [ ] delete results that are too big (likely error)
 - [ ] process the string dates to actual dates
 - [ ] process the juridiction (sometimes there is residu after)
-- [ ] run a spell check on the results
+- [x] run a spell check on the results
   
