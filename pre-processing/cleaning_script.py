@@ -11,15 +11,18 @@ if __name__ == "__main__":
 		arks = Scrapper.get_arks(year)
 		for ark in arks:
 			print("=======>"  + ark)
-			print(" download")
+			print(f"- download {ark}")
 			file = Scrapper.get_document(ark)
-			print(" extraction ")
+			print("- Extraction {ark}")
 			df = cleaner.extract(file)
-			print("post processing")
+			print(f"{df.shape[0]} rows detected")
+			print(f"- Post processing {ark}")
 			df = cleaner.postProcess(df)
-			print(" saving ")
+			print("- Spell checking")
+			df = cleaner.spell_check(df)
+			print("- saving ")
 			cleaner.save(df, ark)
 			print(" finnished " + ark)
-			print("\n\n\n")
+			print("\n")
 			del file
 			del df

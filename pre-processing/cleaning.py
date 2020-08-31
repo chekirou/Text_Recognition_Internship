@@ -6,10 +6,48 @@ import requests
 import re
 import json
 import pandas as pd
+import os
+import pkg_resources
+import nltk
+from symspellpy.symspellpy import SymSpell
+from symspellpy.symspellpy import SymSpell, Verbosity  # import the module
+
+
+def load_dictionnary(dict_path):
+    with open(dict_path) as f :
+        L = f.readlines()
+    words = []
+    for i in L:
+        words.append(i.split(" ")[0])
+    return words
+
+
+def load_lexique(lexique_path):
+    with open(lexique_path) as f:
+        L = f.readlines()
+    words = []
+    for i in L:
+        words.append(i.split("\t")[0])
+    return words
+
+
 class Cleaner:
     def __init__(self, directory):
         self.directory = directory
+        self.dict_path = "../ressources/fr-100k.txt"
+        self.stopwords = list(nltk.corpus.stopwords.words('french'))
+        self.lexique_path = "../ressources/Lexique383.tsv"
+        self.words = load_dictionnary(self.dict_path) + self.stopwords + load_lexique(self.lexique_path)
+        self.corrected = {}
+        
+        self.max_edit_distance_dictionary = 2
+        self.prefix_length = 7
+        self.sym_spell = SymSpell(self.max_edit_distance_dictionary, self.prefix_length)
+        self.dictionary_path = "../ressources/fr-100k.txt"
+        self.sym_spell.load_dictionary(self.dictionary_path, term_index=0, count_index=1)
         pass
+
+
     def extract(self, file):
         soup = BeautifulSoup(file , "html.parser")
         df = pd.DataFrame(columns=["page", "arrêt", "date", "juridiction"])
@@ -89,10 +127,31 @@ class Cleaner:
         
         # process the juridiction
         
-        return df              
-        
+        return df  
+    def spell_check(self, df):
+        df["arrêt"] = df["arrêt"].apply(self.correct)
+        return df
+    def correct(self,text):
+        ntokens= []
+        tokens = re.split('\s|,|\.|;|—|–|-|–|–|\n|:|\!|\?',text)
+        for t in tokens:
+            if(str(t).lower().isalpha() and not str(t).lower() in self.words and not str(t)[0].isupper()):
+                if str(t) in self.corrected:
+                    nt = self.corrected[t]
+                else:
+                    nt = t
+                    suggestion = self.sym_spell.lookup_compound(t, 2)
+                    if len(suggestion)> 0 : 
+                        nt = suggestion[0].term
+                    
+                    self.corrected[t] = nt
+                ntokens.append(nt)
+
+            else:
+                ntokens.append(t)
+        return " ".join(ntokens)
                 
-              
+             
         
                 
                  

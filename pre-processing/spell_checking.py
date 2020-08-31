@@ -69,7 +69,7 @@ for arret in df["arrêt"]:
     for t in tokens:
         if(str(t).lower().isalpha() and not str(t).lower() in words and not str(t)[0].isupper()):
             nt = spell_correction(t)
-            print(t + "->" + nt)
+            print(t + " ->" + nt)
             ntokens.append(nt)
         else:
             ntokens.append(t)
