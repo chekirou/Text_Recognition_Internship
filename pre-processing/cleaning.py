@@ -32,11 +32,11 @@ def load_lexique(lexique_path):
 
 
 class Cleaner:
-    def __init__(self, directory):
+    def __init__(self, directory, lexique_path, dict_path):
         self.directory = directory
-        self.dict_path = "../ressources/fr-100k.txt"
+        self.dict_path = dict_path
         self.stopwords = list(nltk.corpus.stopwords.words('french'))
-        self.lexique_path = "../ressources/Lexique383.tsv"
+        self.lexique_path = lexique_path
         self.words = load_dictionnary(self.dict_path) + self.stopwords + load_lexique(self.lexique_path)
         self.corrected = {}
         
@@ -49,31 +49,38 @@ class Cleaner:
 
 
     def extract(self, file):
+
         soup = BeautifulSoup(file , "html.parser")
         df = pd.DataFrame(columns=["page", "arrêt", "date", "juridiction"])
         Decision, notes, page, new_page, new_decision, count = False, False, 0, True, False,1
+
         for tag in soup.body :
+
             if count == 15:
                 count = 0
                 Decision = False
             new_decision = False
             string = tag.get_text()
+
             if tag.name == "hr":
                 page += 1
                 notes = False
                 new_page  = True
+
             if tag.name == "p" and string is not None and not new_page:
-                m1 = re.match(r"(^.*?(La Cour,|L(A|À|a) COUR)(?! DE)(.+)$|^JUGEMENT\.?\s?$|^A\s?R\s?R\s?(Ê|E)\s?T\.\s?$)", string)
+                m1 = re.match(r"(^.*?(La Cour,|L(A|À|a) COUR)(?! DE)(.+)$|^J\s?U\s?G\s?E\s?M\s?E\s?N\s?T\.?\s?$|^A\s?R\s?R\s?(Ê|E)\s?T\s?\.?\s?$)", string)
                 m2 = re.match(r"(.*?)D(u|û|ù)(.+?)(—|–|-|–|–)(.+)", string ) 
                 
                 if not Decision and m1:
                     Decision = True
                     text = ""
                     count = 1
+
                     if m1.groups()[3] != None:
                         text = str(m1.groups()[3])
                     First_page = page
                     new_decision = True
+
                 if Decision and m2:
                     if count < 15:
                         if(new_decision):
@@ -96,8 +103,9 @@ class Cleaner:
             else :
                 new_page = False
         return df
-    def save(self, df, ark):
-        df.to_csv(f"{self.directory}/{ark}.csv", encoding="utf-8")
+
+    def save(self, df, ark, year):
+        df.to_csv(f"{self.directory}/{year}/{ark}.csv", encoding="utf-8", sep = ";")
         pass
     def postProcess(self, df):
         # fix mix date-juridiction
