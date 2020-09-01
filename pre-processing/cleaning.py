@@ -107,7 +107,7 @@ class Cleaner:
     def save(self, df, ark, year):
         df.to_csv(f"{self.directory}/{year}/{ark}.csv", encoding="utf-8", sep = ";")
         pass
-    def postProcess(self, df):
+    def postProcess(self, df, ark, year, recceuil):
         # fix mix date-juridiction
         Rows_contains_ = df['date'].str.contains(r"(—|–|-)")
         for i, row in df[Rows_contains_].iterrows():
@@ -133,8 +133,12 @@ class Cleaner:
             if m:
                 df.at[i, "juridiction"] = m.groups()[0]
         
-        # process the juridiction
-        
+        # add link
+        df["lien"]  = "https://gallica.bnf.fr/ark:/12148/" + ark+"/f"
+        df["lien"] = df["lien"] + df.page.map(str) +".image"
+
+        df["id"] = "" + str(year) + str(recceuil) + df.index.map(str)
+        df.index = df.id
         return df  
     def spell_check(self, df):
         df["arrêt"] = df["arrêt"].apply(self.correct)
