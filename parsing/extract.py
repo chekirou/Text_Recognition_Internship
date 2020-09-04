@@ -67,6 +67,12 @@ def get_annee(annee):
         os.mkdir("cache/"+annee)
         print("Directory ", "cache/"+annee , " Created ")
     datas = []
+    data_dict = {
+        "juridiction": [],
+        "date": [],
+        "lien": [],
+        "arret": [],
+    }
     for mois in range(1, 13):
         for jour in range(1, 32):
             jour_f = str(jour)
@@ -87,19 +93,13 @@ def get_annee(annee):
                 f = open("tmp.bin", "wb")
                 f.write(content)
                 f.close()
-                datas = datas + extract_all("tmp.bin")
-                data_dict = {
-                    "juridiction":[],
-                    "date":[],
-                    "lien":[],
-                    "arret": [],
-                }
+                datas = extract_all("tmp.bin")
                 for (president,date,juridiction,arret) in datas:
                     data_dict["juridiction"].append(juridiction)
                     data_dict["date"].append(date)
                     data_dict["lien"].append(url)
                     data_dict["arret"].append(arret)
     df = pd.DataFrame(data_dict)
-    df.to_csv("cache/"+annee+"/"+date.replace(' ',"")+"csv")
+    df.to_csv("cache/"+annee+".csv")
 
 get_annee(1911)
