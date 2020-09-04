@@ -58,6 +58,20 @@ def extract_from_txt(content):
     return datas
 
 
+def extract(file_path):
+    with open(file_path) as file:
+        datas = []
+        text = file.read()
+    df = pd.DataFrame(columns=[ "arrêt", "date", "juridiction"])
+    f = re.findall(r"(?<!DU)(?<!«)((?: TRIBUNAL| COUR).+?)\. Audience du(.+?)\.", str(text))
+    s = re.split(r"(?<!DU)(?<!«)(?:(?: TRIBUNAL| COUR).+?)\. Audience du(?:.+?)\.", str(text))
+    for (cour, date), string in zip(f, s[1:]):
+        m = re.findall(r"« ((La Cour|Le Tribunal) ; (.+?))\. » (?:(?!»).)*?(?:([A-Z]{3}))", string)
+        if len(m) > 0:
+            df = df.append({ 'arrêt' : m[0][0] , "date": date, "juridiction" : cour},ignore_index=True)
+    df["juridiction"] = df["juridiction"].apply(lambda x : re.split(r"\.|\(", x)[0] )
+    return df
+
 def get_annee(annee):
     annee = str(annee)
     if not os.path.exists("cache/"):
@@ -66,16 +80,9 @@ def get_annee(annee):
     if not os.path.exists("cache/"+annee):
         os.mkdir("cache/"+annee)
         print("Directory ", "cache/"+annee , " Created ")
-    datas = []
-    data_dict = {
-        "id":[],
-        "juridiction": [],
-        "date": [],
-        "lien": [],
-        "arret": [],
-    }
-    for mois in range(1, 13):
-        for jour in range(1, 32):
+    DF = pd.DataFrame(columns=[ "arrêt", "date", "juridiction", "lien", "id"])
+    for mois in range(1, 2):
+        for jour in range(1, 3):
             jour_f = str(jour)
             if (len(jour_f) == 1):
                 jour_f = "0" + jour_f
@@ -84,6 +91,7 @@ def get_annee(annee):
                 mois_f = "0" + mois_f
             date = str(annee) + mois_f + jour_f
             url = "http://www.enap.justice.fr/ARCHIVE/" + date + ".pdf"
+            print(annee, mois_f, jour_f)
             req = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
             if (req.status_code == 200):
                 print(mois,"/",jour)
@@ -94,12 +102,11 @@ def get_annee(annee):
                 f = open("tmp.bin", "wb")
                 f.write(content)
                 f.close()
-                datas = extract_all("tmp.bin")
-                for (president,date,juridiction,arret) in datas:
-                    data_dict["id"].append(annee+mois_f+jour_f)
-                    data_dict["juridiction"].append(juridiction)
-                    data_dict["date"].append(date)
-                    data_dict["lien"].append(url)
-                    data_dict["arret"].append(arret)
-    df = pd.DataFrame(data_dict)
-    df.to_csv("cache/"+annee+".csv")
+                df = extract("tmp.bin")
+                df["lien"] = url
+                df["id"] = "" + annee +mois_f+jour_f + df.index.map(str)
+                DF = DF.append(df)
+            else:
+                print("No file found")
+    DF.to_csv("cache/"+annee+".csv", encoding="utf-8", sep = ";")
+
