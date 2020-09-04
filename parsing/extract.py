@@ -68,6 +68,7 @@ def get_annee(annee):
         print("Directory ", "cache/"+annee , " Created ")
     datas = []
     data_dict = {
+        "id":[],
         "juridiction": [],
         "date": [],
         "lien": [],
@@ -95,11 +96,10 @@ def get_annee(annee):
                 f.close()
                 datas = extract_all("tmp.bin")
                 for (president,date,juridiction,arret) in datas:
+                    data_dict["id"].append(annee+mois_f+jour_f)
                     data_dict["juridiction"].append(juridiction)
                     data_dict["date"].append(date)
                     data_dict["lien"].append(url)
                     data_dict["arret"].append(arret)
     df = pd.DataFrame(data_dict)
     df.to_csv("cache/"+annee+".csv")
-
-get_annee(1911)
