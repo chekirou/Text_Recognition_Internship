@@ -58,18 +58,22 @@ def extract_from_txt(content):
     return datas
 
 
+
 def extract(file_path):
-    with open(file_path) as file:
+    with open(file_path, "r", encoding="utf-8") as file:
         datas = []
         text = file.read()
+
     df = pd.DataFrame(columns=[ "arrêt", "date", "juridiction"])
-    f = re.findall(r"(?<!DU)(?<!«)((?: TRIBUNAL| COUR).+?)\. Audience du(.+?)\.", str(text))
-    s = re.split(r"(?<!DU)(?<!«)(?:(?: TRIBUNAL| COUR).+?)\. Audience du(?:.+?)\.", str(text))
+    f = re.findall(r"(?<!DU)(?<!«)((?: TRIBUNAL| COUR).+?) du ((?:\S+ ){3})", str(text))
+    s = re.split(r"(?<!DU)(?<!«)(?:(?: TRIBUNAL| COUR).+?) du (?:(?:\S+ ){3})", str(text))
     for (cour, date), string in zip(f, s[1:]):
-        m = re.findall(r"« ((La Cour|Le Tribunal) ; (.+?))\. » (?:(?!»).)*?(?:([A-Z]{3}))", string)
-        if len(m) > 0:
-            df = df.append({ 'arrêt' : m[0][0] , "date": date, "juridiction" : cour},ignore_index=True)
+      m = re.findall(r"(« (?:La (?:C|G)our|Le Tribunal).+?)(?:»|[A-Z]{3})", string)
+      for message in m:
+        df = df.append({ 'arrêt' : message , "date": date, "juridiction" : cour},ignore_index=True)
     df["juridiction"] = df["juridiction"].apply(lambda x : re.split(r"\.|\(", x)[0] )
+    df["arrêt"] = df["arrêt"].apply(lambda x : re.split(r"OBSERVATIONS", x)[0] )
+    df["date"] = df["date"].apply(lambda x : re.split(r"\.", x)[0] )
     return df
 
 def get_annee(annee):
@@ -81,8 +85,8 @@ def get_annee(annee):
         os.mkdir("cache/"+annee)
         print("Directory ", "cache/"+annee , " Created ")
     DF = pd.DataFrame(columns=[ "arrêt", "date", "juridiction", "lien", "id"])
-    for mois in range(1, 2):
-        for jour in range(1, 3):
+    for mois in range(1, 13):
+        for jour in range(1, 32):
             jour_f = str(jour)
             if (len(jour_f) == 1):
                 jour_f = "0" + jour_f
@@ -105,8 +109,23 @@ def get_annee(annee):
                 df = extract("tmp.bin")
                 df["lien"] = url
                 df["id"] = "" + annee +mois_f+jour_f + df.index.map(str)
+                print(f"{len(df)} rows found")
                 DF = DF.append(df)
             else:
-                print("No file found")
-    DF.to_csv("cache/"+annee+".csv", encoding="utf-8", sep = ";")
-
+                url = "http://data.decalog.net/enap1/liens/Gazette/ENAP_GAZETTE_TRIBUNAUX_" + date + ".pdf"
+                req = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
+                if (req.status_code == 200):
+                    print(mois,"/",jour)
+                    f = open("tmp.bin", "wb")
+                    f.write(req.content)
+                    f.close()
+                    content = pdf2xt("tmp.bin")
+                    f = open("tmp.bin", "wb")
+                    f.write(content)
+                    f.close()
+                    df = extract("tmp.bin")
+                    df["lien"] = url
+                    df["id"] = "" + annee +mois_f+jour_f + df.index.map(str)
+                    print(f"{len(df)} rows found")
+                    DF = DF.append(df)
+    DF.to_csv(f"cache/{annee}/Gazette_des_tribunaux.csv", encoding="utf-8", sep = ";")
